@@ -8,13 +8,11 @@ import { BrowserRouter } from 'react-router-dom';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <div className='main'>
-    <React.StrictMode>
-      <GoogleOAuthProvider clientId='777260137351-e7midr8eh5f0jorp89bn2u996e7l3egb.apps.googleusercontent.com'>
-        <BrowserRouter>
-          <App />
-        </BrowserRouter>
-      </GoogleOAuthProvider>
-    </React.StrictMode>
+    <GoogleOAuthProvider clientId='777260137351-e7midr8eh5f0jorp89bn2u996e7l3egb.apps.googleusercontent.com'>
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
+    </GoogleOAuthProvider>
   </div>
 );
 

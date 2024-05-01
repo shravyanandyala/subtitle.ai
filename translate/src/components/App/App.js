@@ -27,11 +27,3 @@ function App() {
 }
 
 export default App;
-
-/*useEffect(() => {
-  const tokenString = sessionStorage.getItem('token');
-  const userToken = JSON.parse(tokenString);
-  if (userToken?.token) {
-    setToken(token);
-  }
-}, []);*/
