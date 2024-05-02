@@ -1,5 +1,33 @@
-.login-wrapper {
-    display: flex;
-    justify-content: center;
-    align-items: center;
+body {
+    height: 100%;
+    width: 100%;
+    background-color: rgb(32, 32, 32);
+}
+
+.login-button {
+    animation: fade-in 2s;
+}
+
+.login-title {
+    animation: fade-in 1s;
+}
+
+.centered {
+    position: absolute;
+    background-color: rgb(32, 32, 32);
+    color: white;
+    top: 50%;
+    left: 50%;
+    text-align: center;
+    transform: translate(-50%, -50%);
+    padding-bottom: 5%;
+}
+
+.note {
+    position: absolute;
+    bottom: 10%;
+    width: 100%;
+    color: white;
+    left: 0%;
+    text-align: center;
 }

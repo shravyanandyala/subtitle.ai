@@ -1,29 +1,41 @@
 import React, { useState } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
-
-import './App.css';
-import Subtitle from '../Subtitle/Subtitle';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import Login from '../Login/Login';
+import Home from '../Home/Home';
+import Subtitle from '../Subtitle/Subtitle';
+import Learn from '../Learn/Learn';
+import './App.css';
 
-function App() {
+export default function App() {
   const [token, setToken] = useState();
+  const navigate = useNavigate();
+
+  const login = (credentials) => {
+    setToken(credentials);
+    navigate('/home');
+  };
 
   return (
-      <div className="wrapper">
-        <h1>subtitle.ai</h1>
-        <Routes>
-          <Route 
-            path="/subtitle" 
-            element={token ? <Subtitle /> : <Navigate to="/login" />} 
-          />
-          {/* Redirect all other paths to login/dashboard depending on authentication */}
-          <Route 
-            path="*" 
-            element={token ? <Navigate to="/subtitle" /> : <Login setToken={setToken} />} 
-          />
-        </Routes>
-      </div>
+    <div className='wrapper'>
+      <Routes>
+        <Route
+          path='/login'
+          element={<Login login={login} />}
+        />
+        <Route
+          path='/learn'
+          element={token ? <Learn /> : <Navigate to='/login' />}
+        />
+        <Route
+          path='/subtitle'
+          element={token ? <Subtitle /> : <Navigate to='/login' />}
+        />
+        {/* Redirect all other paths to login/dashboard depending on authentication */}
+        <Route
+          path='*'
+          element={token ? <Home /> : <Navigate to='/login' />}
+        />
+      </Routes>
+    </div>
   );
 }
-
-export default App;

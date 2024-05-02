@@ -1,10 +1,10 @@
 import React from 'react';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import ReactDOM from 'react-dom/client';
-import './index.css';
 import App from './components/App/App';
 import reportWebVitals from './reportWebVitals';
 import { BrowserRouter } from 'react-router-dom';
+import './index.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <div className='main'>

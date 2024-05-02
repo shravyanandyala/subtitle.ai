@@ -6,7 +6,7 @@ import ffmpeg
 from new_translate import run
 from time import time
 
-upload_dir = '/Users/shravya/Projects/speech.ru/UserFiles/'
+upload_dir = '/Users/shravya/Projects/speech.ru/userFiles/'
 
 app = Flask(__name__)
 CORS(app)

@@ -6,9 +6,9 @@ import { TiDownload } from "react-icons/ti";
 import { Stack } from '@mui/material';
 import { TypeAnimation } from 'react-type-animation';
 import axios from 'axios';
-import './Subtitle.css';
+import './Learn.css';
 
-export default function Subtitle() {
+export default function Learn() {
   const navigate = useNavigate();
   const [file, setFile] = useState();
   const [videoURL, setVideoURL] = useState();
@@ -73,7 +73,7 @@ export default function Subtitle() {
       <div>
         <h1>
           <TypeAnimation
-            sequence={['Subtitle Generator']}
+            sequence={['Word Matching']}
             wrapper='span'
             speed={5}
             style={{fontSize: '45px', display: 'inline-block'}}
@@ -89,7 +89,7 @@ export default function Subtitle() {
             omitDeletionAnimation={true}
             repeat={Infinity}
           />
-        : <h2 style={{'font-weight': '400'}}>Generate subtitles using the power of machine learning</h2>
+        : <h2 style={{'font-weight': '400'}}>To begin, upload a video in Russian.</h2>
         }
       </div>
       {!results && <form onSubmit={handleSubmit}>
