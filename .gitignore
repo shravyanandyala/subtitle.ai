@@ -1,6 +1,5 @@
 .DS_Store
-userFiles
+userFiles/*
 testFiles
-models
 __pycache__
 translate/public

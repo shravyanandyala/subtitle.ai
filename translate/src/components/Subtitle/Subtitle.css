@@ -1,6 +1,8 @@
 .container {
-  max-width: 100%;
+  height: auto;
+  width: auto;
   max-height: 100%;
+  max-width: 100%;
   position: absolute;
   background-color: rgb(32, 32, 32);
   color: white;
@@ -89,6 +91,17 @@ a:link {
   text-decoration: none; 
 }
 
+.react-player {
+  width: 640px;  /* Fixed width for the video player */
+  height: 360px; /* Adjust height as needed */
+}
+
+.subs {
+  max-width: 640px; /* Ensure subtitles do not exceed the video width */
+  word-wrap: break-word; /* Ensure long words do not overflow */
+  text-align: left;
+  margin-bottom: 10px;
+}
 
 @keyframes fade-in {
   from {

@@ -89,8 +89,7 @@ def run(filenames):
                 input_words = []
                 tokens = []
                 count = 0
-                ts = en2ru_tokenizer.convert_ids_to_tokens(phrase[0].tolist())
-                for tok in ts:
+                for tok in en2ru_tokenizer.convert_ids_to_tokens(phrase[0].tolist()):
                     if tok == '</s>':
                         count += 1
                         continue
@@ -100,7 +99,7 @@ def run(filenames):
                         input_words.append((''.join(tokens), (count, count + len(tokens))))
                         count += len(tokens)
                         tokens = []
-                align = []
+
                 generated = ru2en.generate(phrase,
                                            output_attentions=True,
                                            return_dict_in_generate=True)
@@ -131,8 +130,9 @@ def run(filenames):
                 end = transcribed_segments[i]['end']
                 translated_segments.append({'start': start, 'end': end, 'text': result})
                 
+                align = {}
                 # For each output token
-                for i, (output_word, (start, end)) in enumerate(output_words):
+                for output_word, (start, end) in output_words:
                     # Attention information for the current tokens
                     attention_info = generated.cross_attentions[start:end]
                     
@@ -168,11 +168,16 @@ def run(filenames):
                         if max_index in range(start, end):
                             input_word = word
 
-                    align.append((input_word, output_word))
-                
+                    if align.get(input_word):
+                        align[input_word].append(output_word)
+                    else:
+                        align[input_word] = [output_word]
+
                 alignment.append(((translated_segments[i]['start'],
                                    translated_segments[i]['end']),
-                                   align))
+                                   list(align.items()),
+                                   transcribed_segments[i]['text'],
+                                   result))
             
             # Generate English subtitle track
             results[filename]['en_subs'] = generate_subtitle_file(filename, 'en',

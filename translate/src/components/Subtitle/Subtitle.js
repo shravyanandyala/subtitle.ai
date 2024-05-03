@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ReactPlayer from 'react-player';
 import { TiDownload } from "react-icons/ti";
@@ -6,19 +6,52 @@ import { Stack } from '@mui/material';
 import { TypeAnimation } from 'react-type-animation';
 import axios from 'axios';
 import './Subtitle.css';
+import { internal_resolveProps } from '@mui/utils';
 
 export default function Subtitle() {
   const navigate = useNavigate();
   const [file, setFile] = useState();
   const [videoURL, setVideoURL] = useState();
   const [subtitles, setSubtitles] = useState([]);
-  const [results, setResults] = useState();
+  const [results, setResults] = useState(null);
+  const [segment, setSegment] = useState(0);
+  const [segmentInfo, setSegmentInfo] = useState(null);
   const [isLoading, setLoading] = useState(false);
+  const player = useRef(null);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (player && player.current) {
+        const duration = player.current.getCurrentTime();
+        let found = false;
+        if (results && results.align) {
+          results.align.some((ele, i) => {
+            const cond = duration >= ele[0][0] && duration <= ele[0][1];
+            if (cond) {
+              setSegmentInfo([ele[0][0], ele[0][1]]);
+              setSegment(i);
+              found = true;
+            }
+            return cond;
+          });
+        }
+        if (!found) setSegmentInfo(null);
+      }
+    }, 1000);
+
+    return (() => {
+      clearInterval(interval);
+    });
+  }, [results]);
 
   const handleChange = (event) => {
-    setResults(null);
-    setFile(event.target.files[0]);
-    setVideoURL(URL.createObjectURL(event.target.files[0]));
+    if (event.target.files[0]) {
+      setResults(null);
+      setFile(event.target.files[0]);
+      setVideoURL(URL.createObjectURL(event.target.files[0]));
+      setSegment(0);
+      setSegmentInfo(null);
+    }
   };
 
   const handleSubmit = (event) => {
@@ -78,7 +111,10 @@ export default function Subtitle() {
             speed={5}
             repeat={Infinity}
           />
-        : <h2 style={{'font-weight': '400'}}>Generate smart subtitles using the power of machine learning.</h2>
+        : <div>
+          <h2 style={{'font-weight': '400'}}>Generate subtitles using the power of machine learning.</h2>
+          <h2 style={{'font-weight': '400'}}>Visualize NMT word alignment through attention.</h2>
+          </div>
         }
       </div>
       {!results && <form onSubmit={handleSubmit}>
@@ -116,7 +152,8 @@ export default function Subtitle() {
             }
           </Stack>
           <ReactPlayer
-            className='react-player fixed-bottom'
+            ref={player}
+            className='react-player'
             url={videoURL}
             width='100%'
             height='100%'
@@ -130,10 +167,31 @@ export default function Subtitle() {
               },
             }}
           />
-          {results.align && results.align[currSub].map(([ruWord, enWord]) =>
+          {segmentInfo && results && results.align &&
+          <div>
             <div className='subs'>
+              {results.align[segment][2]}
             </div>
-          )}
+            <div className='subs'>
+              {results.align[segment][3]}
+            </div>
+            <br/>
+            <div className='subs'>
+              <b>Visualizing effect of input word on outputted translation</b>
+              <table>
+                {results.align[segment][1].map((element) => {
+                  const [ruWord, enWords] = element;
+                  return (
+                    <tr>
+                      <td><b>{ruWord}</b></td>
+                      <td>{enWords.join(', ')}</td>
+                    </tr>
+                  );
+                })}
+              </table>
+            </div>
+          </div>
+          }
         </Stack>
       }
     </Stack>
