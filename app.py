@@ -3,7 +3,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
 import ffmpeg
-from new_translate import run
+from translate import run
 from time import time
 
 upload_dir = '/Users/shravya/Projects/speech.ru/userFiles/'

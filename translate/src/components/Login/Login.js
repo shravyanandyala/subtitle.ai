@@ -18,6 +18,7 @@ export default function Login({ login }) {
                 sequence={['Login', 500, () => {setShowLogin(true);}]}
                 wrapper='span'
                 speed={5}
+                cursor={false}
                 style={{fontSize: '1.5em', display: 'inline-block'}}
               />
             </h1>

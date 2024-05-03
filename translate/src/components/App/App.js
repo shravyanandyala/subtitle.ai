@@ -3,7 +3,6 @@ import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import Login from '../Login/Login';
 import Home from '../Home/Home';
 import Subtitle from '../Subtitle/Subtitle';
-import Learn from '../Learn/Learn';
 import './App.css';
 
 export default function App() {
@@ -21,10 +20,6 @@ export default function App() {
         <Route
           path='/login'
           element={<Login login={login} />}
-        />
-        <Route
-          path='/learn'
-          element={token ? <Learn /> : <Navigate to='/login' />}
         />
         <Route
           path='/subtitle'

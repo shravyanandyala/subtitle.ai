@@ -19,7 +19,7 @@
   justify-content: center;
 }
 
-.button, input::file-selector-button, .download-button, .back-button, .logout-button {
+.button, input::file-selector-button, .download-button, .back-button, .logout-button, .next-button {
   background-color: rgba(255, 255, 255, 0.2);
   border: 2px solid rgba(255, 255, 255, 0);
   border-radius: 8px;
@@ -52,11 +52,6 @@ input[type=file] {
   font-family: sans-serif;
 }
 
-button:disabled {
-  background-color: rgba(255, 255, 255, 0.2);
-  color:rgba(255, 255, 255, 0.2)
-}
-
 .download-button {
   background-color: rgba(255, 255, 255, 0.8);
   color: black;
@@ -78,13 +73,41 @@ button:disabled {
   font-size: 20px
 }
 
-.download-button:hover, .back-button:hover, .logout-button:hover {
+.next-button {
+  position: relative;
+  left: 47%;
+  margin-top: 5%;
+  animation: fade-in 2s;
+}
+
+.download-button:hover, .back-button:hover, .logout-button:hover, .next-button:hover {
   background-color: black;
   color: white;
   border: 2px solid white;
   transition: 0.5s;
 }
 
+button:disabled, .next-button:disabled {
+  background-color: rgba(255, 255, 255, 0.2);
+  color:rgba(255, 255, 255, 0.2);
+  border: 2px solid rgba(255, 255, 255, 0);
+}
+
 a:link { 
   text-decoration: none; 
+}
+
+.title {
+  font-size: 1.8em;
+  font-weight: 400;
+  animation: fade-in 2s;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }

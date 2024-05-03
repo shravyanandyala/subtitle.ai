@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ReactPlayer from 'react-player';
-import { RotatingLines } from 'react-loader-spinner';
 import { TiDownload } from "react-icons/ti";
 import { Stack } from '@mui/material';
 import { TypeAnimation } from 'react-type-animation';
@@ -56,24 +55,15 @@ export default function Subtitle() {
     }).finally(() => {setLoading(false);});
   };
 
-  const goBack = () => {
-    setFile(null);
-    setVideoURL('');
-    setResults(null);
-  };
-
   return (
     <div>
     <button onClick={() => {navigate('/login');}} className='logout-button'>log out</button>
-    {results 
-    ? <button onClick={goBack} className='back-button'>subtitle</button>
-    : <button onClick={() => {navigate('/home');}} className='back-button'>home</button>
-    }
-    <Stack spacing={10} className='container'>
+    <button onClick={() => {navigate('/home');}} className='back-button'>home</button>
+    <Stack spacing={2} className='container'>
       <div>
         <h1>
           <TypeAnimation
-            sequence={['Subtitle Generator']}
+            sequence={['subtitle.ai']}
             wrapper='span'
             speed={5}
             style={{fontSize: '45px', display: 'inline-block'}}
@@ -83,32 +73,26 @@ export default function Subtitle() {
         {isLoading
         ? <TypeAnimation
             style={{'font-weight': '400', 'font-size': '30px'}}
-            sequence={['Working some magic...', 1000, '']}
+            sequence={['Working some magic...', 1000, '', 500]}
             wrapper='span'
             speed={5}
-            omitDeletionAnimation={true}
             repeat={Infinity}
           />
-        : <h2 style={{'font-weight': '400'}}>Generate subtitles using the power of machine learning</h2>
+        : <h2 style={{'font-weight': '400'}}>Generate smart subtitles using the power of machine learning.</h2>
         }
       </div>
       {!results && <form onSubmit={handleSubmit}>
-        {!isLoading && <input type='file' onChange={handleChange} accept='video/*' />}
-        {/* If waiting for an API response, disable upload button and
-          * display loading spinner instead. */}
-        {isLoading
-        ? <RotatingLines
-          strokeColor='white'
-          strokeWidth='3'
-          width='60'
-          visible={true}/>
-        : <button className='button' type='submit' disabled={!videoURL}>
-            Upload and Process
-          </button>
+        {!isLoading && 
+          <div>
+            <input type='file' onChange={handleChange} accept='video/*' />
+            <button className='button' type='submit' disabled={!videoURL}>
+              Upload and Process
+            </button>
+          </div>
         }
       </form>}
       {results &&
-        <Stack spacing={10}>
+        <Stack spacing={5}>
           <Stack direction='row' spacing={10} className='center'>
             {results.ru_subs &&
               <a href={process.env.PUBLIC_URL + '/' + results.ru_subs}
@@ -136,7 +120,7 @@ export default function Subtitle() {
             url={videoURL}
             width='100%'
             height='100%'
-            controls = {true}
+            controls={true}
             config={{
               file: {
                 attributes: {
@@ -146,6 +130,10 @@ export default function Subtitle() {
               },
             }}
           />
+          {results.align && results.align[currSub].map(([ruWord, enWord]) =>
+            <div className='subs'>
+            </div>
+          )}
         </Stack>
       }
     </Stack>

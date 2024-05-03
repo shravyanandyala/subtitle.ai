@@ -31,3 +31,13 @@ body {
     left: 0%;
     text-align: center;
 }
+
+
+@keyframes fade-in {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}

@@ -59,9 +59,7 @@ def generate_subtitle_file(filename, language, segments):
 
 def run(filenames):
     data = Dataset.from_dict({'path': filenames})
-
     results = {}
-
     with torch.no_grad():
         for d in data:
             filename = d['path']
@@ -78,16 +76,29 @@ def run(filenames):
             results[filename]['ru_subs'] = generate_subtitle_file(filename, 'ru',
                                                                   transcribed_segments)
 
-            # Encode all the transcripted phrases
-            encoded_phrases = list(map(lambda x: tokenizer.encode(x['text'],
-                                                                  return_tensors='pt'),
-                                       transcribed_segments))
-                        
             translated_segments = []
             alignment = []
 
-            for i, phrase in enumerate(encoded_phrases):
-                generated = ru2en.generate(phrase,
+            for i, segment in enumerate(transcribed_segments):
+                text = segment['text']
+                ids = []
+                input_to_ids = []
+                count = 0
+                # Encode text and prepare to give as input to the model
+                for i, word in enumerate(text.split()):
+                    encoded = tokenizer.encode_plus(word,
+                                                    add_special_tokens=False,
+                                                    return_tensors='pt')
+                    input_ids = list(encoded['input_ids'])
+                    ids += input_ids
+                    input_to_ids.append((count, count + len(ids)))
+                    print(i, word)
+
+                # Add in special tokens for model input
+                input = tf.constant([tokenizer.build_inputs_with_special_tokens(ids)])
+
+                align = []
+                generated = ru2en.generate(input,
                                            output_attentions=True,
                                            return_dict_in_generate=True)
 
@@ -101,14 +112,10 @@ def run(filenames):
                 translated_segments.append({'start': start, 'end': end, 'text': result})
 
                 # For each output token
-                for i, token in enumerate(output):
-                    # Don't do this for special tokens
-                    if i in get_special_indices(output):
-                        continue
-
+                for i in range(len(output)):
                     # Attention information for the current token
                     attention_info = generated.cross_attentions[i]
-                    attention = []
+                    attn = []
                     # Next is attention heads
                     for attn_head in attention_info:
                         # Next is number of beams, want the top one
@@ -116,25 +123,33 @@ def run(filenames):
                         # Next is the number of layers, want the last one
                         last_layer = beam[-1]
                         # Next is the batch size, always 1
-                        attention.append(last_layer[0])
+                        attn.append(last_layer[0])
 
-                    attention = np.asarray(attention).mean(axis=0)
+                    attn = np.asarray(attn).mean(axis=0)
                     # Want to get value from across attention heads, without
                     # considering special tokens added by the tokenizer
                     special_tokens_mask = tokenizer.get_special_tokens_mask(
-                        phrase[0], already_has_special_tokens=True)
-                    special_tokens_indices = [i for i, v in enumerate(special_tokens_mask) if v == 1]
-                    attention[special_tokens_indices] = 0
+                        input_ids[i], already_has_special_tokens=True)
+                    special_tokens_indices = [j for j, v in enumerate(special_tokens_mask) if v == 1]
+                    attn.delete([special_tokens_indices], 1)
+
+                    max_index, max_value = None
+                    for i, (start, end) in enumerate(input_to_ids):
+                        mi = attn[start:end].argmax().item()
+                        value = attn[mi]
+                        if value > max_value:
+                            max_index = i
+                            max_value = value
                     
-                    max_index = attention.argmax().item()
-                    input_word = en2ru_tokenizer.decode([phrase[0, max_index]], skip_special_tokens=True)
-                    output_word = tokenizer.decode([token], skip_special_tokens=True)
-                    alignment.append((input_word, output_word))
-                    
+                    if max_index:
+                        align.append((max_index, i))
+                
+                alignment.append(align)
+                print(alignment)
+
             # Generate English subtitle track
             results[filename]['en_subs'] = generate_subtitle_file(filename, 'en',
                                                                   translated_segments)
-
             results[filename]['align'] = alignment
 
     return results

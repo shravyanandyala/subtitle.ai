@@ -1,174 +1,194 @@
 import sys
-import warnings
-import librosa
-import nltk
+import os
 import numpy as np
-
 import torch
-from datasets import Dataset, load_dataset
-from transformers import Wav2Vec2ForCTC, Wav2Vec2ProcessorWithLM
+import math
+from datasets import Dataset
+from faster_whisper import WhisperModel
 
 # Using the ported transformers version of the fairseq translation model for
 # a lighter weight
 from transformers import FSMTForConditionalGeneration, FSMTTokenizer
 
-TRANSCRIPT_MODEL_ID = "bond005/wav2vec2-large-ru-golos-with-lm"
-DATASET_ID = "bond005/sberdevices_golos_10h_crowd"
-SAMPLES = 5
+DIR_PATH = '/Users/shravya/Projects/speech.ru/translate/'
 
-nltk.download('punkt', quiet=True)
+# Transcription model
+transcript_model = WhisperModel('models/large')
 
-processor = Wav2Vec2ProcessorWithLM.from_pretrained(TRANSCRIPT_MODEL_ID)
-transcript_model = Wav2Vec2ForCTC.from_pretrained(TRANSCRIPT_MODEL_ID)
-
-# Use the Russian to English translation model
-TRANSLATION_MODEL_ID = "facebook/wmt19-ru-en"
+# Russian to English translation model
+TRANSLATION_MODEL_ID = 'facebook/wmt19-ru-en'
 tokenizer = FSMTTokenizer.from_pretrained(TRANSLATION_MODEL_ID)
-en2ru_tokenizer = FSMTTokenizer.from_pretrained("facebook/wmt19-en-ru")
+en2ru_tokenizer = FSMTTokenizer.from_pretrained('facebook/wmt19-en-ru')
 ru2en = FSMTForConditionalGeneration.from_pretrained(TRANSLATION_MODEL_ID)
 ru2en.eval()
-
-# Preprocessing the datasets.
-# We need to read the audio files as arrays
-def speech_file_to_inputs_fn(batch):
-    speech_array, sr = librosa.load(batch['path'], sr=16_000)
-    
-    # Split audio file into smaller chunks so model can process all data
-    sample_len = 30 * sr
-    counter = 0
-    samples_array = []
-    while counter < len(speech_array):
-        sample_amt = min(sample_len, len(speech_array) - counter)
-        sample = speech_array[counter : counter + sample_amt]
-        samples_array.append(np.asarray(sample, dtype=np.float32))
-        counter += sample_amt
-    batch['speech'] = samples_array
-    return batch
-
-# Preprocessing the datasets.
-# We need to read the audio files as arrays
-def speech_file_to_array_fn(batch):
-    speech_array = batch["audio"]["array"]
-    batch["speech"] = [np.asarray(speech_array, dtype=np.float32)]
-    return batch
 
 # Return list of indices of special tokens added by the tokenizer.
 def get_special_indices(tokens):
     mask = tokenizer.get_special_tokens_mask(tokens, already_has_special_tokens=True)
     return [i for i, v in enumerate(mask) if v == 1]
 
-def run(filenames, testMode=False):
-    if testMode:
-        data = load_dataset(DATASET_ID, split=f"test[:{SAMPLES}]")
-        removed_columns = set(data.column_names)
-        removed_columns -= {'transcription', 'speech'}
-        removed_columns = sorted(list(removed_columns))
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            data = data.map(
-                speech_file_to_array_fn,
-                remove_columns=removed_columns
-            )
-    else:
-        data = Dataset.from_dict({'path': filenames})
-        # Convert audio to speech array
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            data = data.map(speech_file_to_inputs_fn)
+def format_time(seconds):
+    hours = math.floor(seconds / 3600)
+    seconds %= 3600
+    minutes = math.floor(seconds / 60)
+    seconds %= 60
+    milliseconds = round((seconds - math.floor(seconds)) * 1000)
+    seconds = math.floor(seconds)
+    formatted_time = f"{hours:02d}:{minutes:02d}:{seconds:02d}.{milliseconds:03d}"
+    return formatted_time
 
-    transcriptions = []
-    translations = []
-    alignments = []
+def generate_subtitle_file(filename, language, segments):
+    tmp = filename.split('/')
+    file = tmp[-1].split('.')[0]
+    sub_file = f'sub-{file}.{language}.vtt'
+    subtitle_file = os.path.join(DIR_PATH, 'public', sub_file)
+    text = 'WEBVTT\n\n'
+    for index, segment in enumerate(segments):
+        segment_start = format_time(segment['start'])
+        segment_end = format_time(segment['end'])
+        text += f'{str(index+1)} \n'
+        text += f'{segment_start} --> {segment_end} \n'
+        text += f'{segment["text"]} \n'
+        text += '\n'
+        
+    f = open(subtitle_file, 'w')
+    f.write(text)
+    f.close()
 
-    # Get predicted transcription from model
+    return sub_file
+
+def run(filenames):
+    data = Dataset.from_dict({'path': filenames})
+    results = {}
     with torch.no_grad():
         for d in data:
-            transcript_chunks = []
-            # Iterate over all audio chunks for each file
-            for row in d['speech']:
-                # Transcribe the audio first
-                inputs = processor(row,
-                                sampling_rate=16_000,
-                                return_tensors="pt",
-                                padding=True)
-                logits = transcript_model(inputs.input_values,
-                                          attention_mask=inputs.attention_mask).logits
-                tscript = processor.decode(logits=logits.numpy()[:][:][0]).text
-                transcript_chunks.append(tscript)
-                    
-            # Link together the transcribed chunks
-            transcriptions.append(' '.join(transcript_chunks))
+            filename = d['path']
+            results[filename] = {'ru_subs': None, 'en_subs': None, 'align': None}
 
-            # Encode all the transcripted phrases
-            encoded_phrases = list(map(lambda x: tokenizer.encode(x, return_tensors="pt"),
-                                       transcript_chunks))
-            
-            translated = []
+            segments, _ = transcript_model.transcribe(filename,
+                                                         language='ru')
+            transcribed_segments = list(map(lambda s: {'start': s.start,
+                                                       'end': s.end,
+                                                       'text': s.text},
+                                            segments))
+
+            # Generate Russian subtitle track
+            results[filename]['ru_subs'] = generate_subtitle_file(filename, 'ru',
+                                                                  transcribed_segments)
+
+            # Encode all the transcripted phrases and create a mapping to link
+            # tokens to input words
+            encoded_phrases = list(map(lambda x: tokenizer.encode(x['text'],
+                                                                  return_tensors='pt'),
+                                       transcribed_segments))
+                        
+            translated_segments = []
             alignment = []
 
-            for phrase in encoded_phrases:
+            for i, phrase in enumerate(encoded_phrases):
+                input_words = []
+                tokens = []
+                count = 0
+                ts = en2ru_tokenizer.convert_ids_to_tokens(phrase[0].tolist())
+                for tok in ts:
+                    if tok == '</s>':
+                        count += 1
+                        continue
+                    toks = tok.split('</w>')
+                    tokens.append(toks[0])
+                    if len(toks) > 1:
+                        input_words.append((''.join(tokens), (count, count + len(tokens))))
+                        count += len(tokens)
+                        tokens = []
+                align = []
                 generated = ru2en.generate(phrase,
                                            output_attentions=True,
                                            return_dict_in_generate=True)
 
                 # Batch size is 1 so just grab the first element of output tokens
                 output = generated.sequences[0]
-                result = tokenizer.decode(output, skip_special_tokens=True)
-                translated.append(result)
-                # For each output token
-                for i, token in enumerate(output):
-                    # Don't do this for special tokens
-                    if i in get_special_indices(output):
+                output_words = []
+                tokens = []
+                count = 0
+                for tok in tokenizer.convert_ids_to_tokens(output.tolist()):
+                    if tok == '</s>':
+                        count += 1
                         continue
+                    toks = tok.split('</w>')
+                    tokens.append(toks[0])
+                    if len(toks) > 1:
+                        output_words.append((''.join(tokens), (count, count + len(tokens))))
+                        count += len(tokens)
+                        tokens = []
 
-                    # Attention information for the current token
-                    attention_info = generated.cross_attentions[i]
-                    attention = []
-                    # Next is attention heads
-                    for attn_head in attention_info:
-                        # Next is number of beams, want the top one
-                        beam = attn_head[0]
-                        # Next is the number of layers, want the last one
-                        last_layer = beam[-1]
-                        # Next is the batch size, always 1
-                        attention.append(last_layer[0])
+                # At this point, input_words maps a full input word to indices
+                # and output_words maps a full output word to token indices
+                
+                result = tokenizer.decode(output, skip_special_tokens=True)
 
-                    attention = np.asarray(attention).mean(axis=0)
+                # Update segment with translation
+                start = transcribed_segments[i]['start']
+                end = transcribed_segments[i]['end']
+                translated_segments.append({'start': start, 'end': end, 'text': result})
+                
+                # For each output token
+                for i, (output_word, (start, end)) in enumerate(output_words):
+                    # Attention information for the current tokens
+                    attention_info = generated.cross_attentions[start:end]
+                    
+                    attns = []
+                    for token_info in attention_info:
+                        attn = []
+                        # Next is attention heads
+                        for attn_head in token_info:
+                            # Next is number of beams, want the top one
+                            beam = attn_head[0]
+                            # Next is the number of layers, want the last one
+                            last_layer = beam[-1]
+                            # Next is the batch size, always 1
+                            attn.append(last_layer[0])
+                        # Average across attention heads
+                        attns.append(np.asarray(attn).mean(axis=0))
+
+                    # Max attention score across tokens
+                    attention = np.asarray(attns).max(axis=0)
+
                     # Want to get value from across attention heads, without
                     # considering special tokens added by the tokenizer
                     special_tokens_mask = tokenizer.get_special_tokens_mask(
                         phrase[0], already_has_special_tokens=True)
-                    special_tokens_indices = [i for i, v in enumerate(special_tokens_mask) if v == 1]
+                    special_tokens_indices = [j for j, v in enumerate(special_tokens_mask) if v == 1]
                     attention[special_tokens_indices] = 0
-                    
+
                     max_index = attention.argmax().item()
-                    input_word = en2ru_tokenizer.decode([phrase[0, max_index]], skip_special_tokens=True)
-                    output_word = tokenizer.decode([token], skip_special_tokens=True)
-                    alignment.append((input_word, output_word))
-                    
-            translations.append(' '.join(translated))
-            alignments.append(alignment)
-    
-    results = {}
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        for i, predicted_sentence in enumerate(transcriptions):
-            fname = filenames[i] if filenames else f'test_{i}'
-            results[fname] = {"transcription": predicted_sentence,
-                              "translation": translations[i],
-                              "alignment": alignments[i]}
+
+                    input_word = None
+                    # Using max_index, find the input word that matches
+                    for word, (start, end) in input_words:
+                        if max_index in range(start, end):
+                            input_word = word
+
+                    align.append((input_word, output_word))
+                
+                alignment.append(align)
+            
+            # Generate English subtitle track
+            results[filename]['en_subs'] = generate_subtitle_file(filename, 'en',
+                                                                  translated_segments)
+            results[filename]['align'] = alignment
+
     return results
 
 if __name__ == '__main__':
     results = None
     if len(sys.argv) < 2:
-        results = run(None, testMode=True)
+        results = run(None)
     else:
         results = run(sys.argv[1:])
 
     for k,v in results.items():
         print(f'--------------- {k} ---------------')
-        print(f'Transcription: {v["transcription"]}')
-        print(f'Translation: {v["translation"]}')
-        print(f'Alignment: {v["alignment"]}')
+        print(f'ru_subs: {v["ru_subs"]}')
+        print(f'en_subs: {v["en_subs"]}')
+        print(f'alignment: {v["align"]}')
         print()

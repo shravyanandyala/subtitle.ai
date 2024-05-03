@@ -21,15 +21,14 @@ export default function Home() {
                 () => { setShowButtons(true); }
               ]}
               speed={5}
+              cursor={false}
               style={{fontSize: '1.5em', display: 'inline-block'}}
             />
           </h1>
           {showButtons &&
             <div className='options'>
-              <Stack direction="row" spacing={10}>
-                <button className='button2' onClick={() => navigate('/subtitle')}>I want to subtitle</button>
-                <button className='button2' onClick={() => navigate('/learn')}>I want to learn</button>
-              </Stack>
+              <button className='button2' onClick={() => navigate('/subtitle')}>I want to subtitle</button>
+              {/*<button className='button2' onClick={() => navigate('/learn')}>I want to learn</button>*/}
             </div>
           }
         </Stack>
