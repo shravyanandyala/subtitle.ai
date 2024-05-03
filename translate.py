@@ -170,7 +170,9 @@ def run(filenames):
 
                     align.append((input_word, output_word))
                 
-                alignment.append(align)
+                alignment.append(((translated_segments[i]['start'],
+                                   translated_segments[i]['end']),
+                                   align))
             
             # Generate English subtitle track
             results[filename]['en_subs'] = generate_subtitle_file(filename, 'en',
