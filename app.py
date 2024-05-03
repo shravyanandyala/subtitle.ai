@@ -1,6 +1,7 @@
 import os
 from flask import Flask, request, jsonify
-from flask_cors import CORS
+from flask.helpers import send_from_directory
+from flask_cors import CORS, cross_origin
 from werkzeug.utils import secure_filename
 import ffmpeg
 from translate import run
@@ -8,10 +9,11 @@ from time import time
 
 upload_dir = '/Users/shravya/Projects/speech.ru/userFiles/'
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='translate/build', static_url_path='')
 CORS(app)
 
 @app.route('/process-audio', methods=['POST'])
+@cross_origin()
 def process_audio():
     # Save video file from user
     file = request.files['file']
@@ -36,6 +38,11 @@ def process_audio():
     os.remove(audio_path)
 
     return jsonify(results[audio_path])
+
+@app.route('/')
+@cross_origin()
+def serve():
+    return send_from_directory(app.static_folder, 'index.html')
 
 if __name__ == '__main__':
     app.run(debug=True)

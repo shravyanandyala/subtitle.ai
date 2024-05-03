@@ -10,10 +10,10 @@ from faster_whisper import WhisperModel
 # a lighter weight
 from transformers import FSMTForConditionalGeneration, FSMTTokenizer
 
-DIR_PATH = '/Users/shravya/Projects/speech.ru/translate/'
+DIR_PATH = './translate/'
 
 # Transcription model
-transcript_model = WhisperModel('models/large')
+transcript_model = WhisperModel('large')
 
 # Russian to English translation model
 TRANSLATION_MODEL_ID = 'facebook/wmt19-ru-en'

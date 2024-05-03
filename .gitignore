@@ -3,3 +3,4 @@ userFiles/*
 testFiles
 __pycache__
 translate/public
+models
