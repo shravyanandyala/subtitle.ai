@@ -13,7 +13,11 @@ from transformers import FSMTForConditionalGeneration, FSMTTokenizer
 DIR_PATH = './translate/'
 
 # Transcription model
-transcript_model = WhisperModel('large')
+transcript_model = WhisperModel('large-v3')
+
+COLORS = ['#e6194b', '#3cb44b', '#ffe119', '#4363d8', '#f58231', '#911eb4', '#46f0f0',
+          '#f032e6', '#bcf60c', '#fabebe', '#008080', '#e6beff', '#9a6324', '#fffac8',
+          '#800000', '#aaffc3', '#808000', '#ffd8b1', '#000075', '#808080', '#ffffff']
 
 # Russian to English translation model
 TRANSLATION_MODEL_ID = 'facebook/wmt19-ru-en'
@@ -96,7 +100,9 @@ def run(filenames):
                     toks = tok.split('</w>')
                     tokens.append(toks[0])
                     if len(toks) > 1:
-                        input_words.append((''.join(tokens), (count, count + len(tokens))))
+                        input_words.append((
+                            tokenizer.convert_tokens_to_string(tokens),
+                            (count, count + len(tokens))))
                         count += len(tokens)
                         tokens = []
 
@@ -116,7 +122,9 @@ def run(filenames):
                     toks = tok.split('</w>')
                     tokens.append(toks[0])
                     if len(toks) > 1:
-                        output_words.append((''.join(tokens), (count, count + len(tokens))))
+                        output_words.append((
+                            en2ru_tokenizer.convert_tokens_to_string(tokens),
+                            (count, count + len(tokens))))
                         count += len(tokens)
                         tokens = []
 
@@ -130,9 +138,10 @@ def run(filenames):
                 end = transcribed_segments[i]['end']
                 translated_segments.append({'start': start, 'end': end, 'text': result})
                 
-                align = {}
+                input_colors = [COLORS[c % len(COLORS)] for c in range(len(input_words))]
+                output_colors = [[] for _ in range(len(output_words))]
                 # For each output token
-                for output_word, (start, end) in output_words:
+                for output_index, (_, (start, end)) in enumerate(output_words):
                     # Attention information for the current tokens
                     attention_info = generated.cross_attentions[start:end]
                     
@@ -162,22 +171,16 @@ def run(filenames):
 
                     max_index = attention.argmax().item()
 
-                    input_word = None
                     # Using max_index, find the input word that matches
-                    for word, (start, end) in input_words:
+                    for input_index, (_, (start, end)) in enumerate(input_words):
                         if max_index in range(start, end):
-                            input_word = word
-
-                    if align.get(input_word):
-                        align[input_word].append(output_word)
-                    else:
-                        align[input_word] = [output_word]
+                            output_colors[output_index] = input_colors[input_index]
+                            break
 
                 alignment.append(((translated_segments[i]['start'],
                                    translated_segments[i]['end']),
-                                   list(align.items()),
-                                   transcribed_segments[i]['text'],
-                                   result))
+                                   (list(map(lambda x: x[0], input_words)), input_colors),
+                                   (list(map(lambda x: x[0], output_words)), output_colors)))
             
             # Generate English subtitle track
             results[filename]['en_subs'] = generate_subtitle_file(filename, 'en',

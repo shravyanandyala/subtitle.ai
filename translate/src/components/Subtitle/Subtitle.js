@@ -170,25 +170,24 @@ export default function Subtitle() {
           {segmentInfo && results && results.align &&
           <div>
             <div className='subs'>
-              {results.align[segment][2]}
+              {(() => {
+                const [words, colors] = results.align[segment][1];
+                return (
+                  <div>
+                    {words.map((word, i) => <span style={{'color': `${colors[i]}`}}>{word} </span>)}
+                  </div>
+                )
+              })()}
             </div>
             <div className='subs'>
-              {results.align[segment][3]}
-            </div>
-            <br/>
-            <div className='subs'>
-              <b>Visualizing effect of input word on outputted translation</b>
-              <table>
-                {results.align[segment][1].map((element) => {
-                  const [ruWord, enWords] = element;
-                  return (
-                    <tr>
-                      <td><b>{ruWord}</b></td>
-                      <td>{enWords.join(', ')}</td>
-                    </tr>
-                  );
-                })}
-              </table>
+              {(() => {
+                const [words, colors] = results.align[segment][2];
+                return (
+                  <div>
+                    {words.map((word, i) => <span style={{'color': `${colors[i]}`}}>{word} </span>)}
+                  </div>
+                )
+              })()}
             </div>
           </div>
           }
